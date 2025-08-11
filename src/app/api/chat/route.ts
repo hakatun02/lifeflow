@@ -1,32 +1,18 @@
+// src/app/api/chat/route.ts
 import { NextResponse } from "next/server";
-import OpenAI from "openai";
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
 
 export async function POST(req: Request) {
   try {
-    const { message } = await req.json();
-
-    if (!message) {
-      return NextResponse.json({ error: "Сообщение пустое" }, { status: 400 });
-    }
-
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [{ role: "user", content: message }],
-    });
+    const body = await req.json();
+    console.log("Пришёл запрос:", body);
 
     return NextResponse.json({
-      reply: completion.choices[0]?.message?.content || "Нет ответа",
+      success: true,
+      message: "Привет, это GPT-4o-mini (тест без API)"
     });
-  } catch (error: any) {
-    console.error("Ошибка OpenAI:", error);
-    return NextResponse.json(
-      { error: error.message || "Ошибка при запросе к OpenAI" },
-      { status: 500 }
-    );
+  } catch (error) {
+    console.error("Ошибка API:", error);
+    return NextResponse.json({ success: false, error: "Ошибка сервера" }, { status: 500 });
   }
 }
 
