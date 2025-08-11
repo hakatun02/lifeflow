@@ -13,7 +13,17 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
+  // Загружаем историю из localStorage при первом рендере
   useEffect(() => {
+    const saved = localStorage.getItem("chatMessages");
+    if (saved) {
+      setMessages(JSON.parse(saved));
+    }
+  }, []);
+
+  // Сохраняем историю в localStorage при каждом изменении
+  useEffect(() => {
+    localStorage.setItem("chatMessages", JSON.stringify(messages));
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
@@ -50,9 +60,29 @@ export default function Home() {
     setLoading(false);
   };
 
+  const clearChat = () => {
+    setMessages([]);
+    localStorage.removeItem("chatMessages");
+  };
+
   return (
     <main style={{ padding: "20px", maxWidth: "600px", margin: "0 auto" }}>
       <h1>GPT-4o-mini Chat</h1>
+
+      <button
+        style={{
+          marginBottom: "10px",
+          padding: "6px 12px",
+          borderRadius: "8px",
+          background: "#ff4d4f",
+          color: "#fff",
+          border: "none",
+          cursor: "pointer",
+        }}
+        onClick={clearChat}
+      >
+        Очистить чат
+      </button>
 
       {/* Чат */}
       <div
