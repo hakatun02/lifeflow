@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import ReactMarkdown from "react-markdown";
 
 export default function Home() {
   const [input, setInput] = useState("");
@@ -10,7 +11,6 @@ export default function Home() {
   const sendMessage = async () => {
     if (!input.trim()) return;
 
-    // Добавляем сообщение пользователя в историю
     const newMessages = [...messages, { role: "user", content: input }];
     setMessages(newMessages);
     setInput("");
@@ -44,7 +44,7 @@ export default function Home() {
   };
 
   return (
-    <div style={{ maxWidth: 600, margin: "0 auto", padding: 20 }}>
+    <div style={{ maxWidth: 700, margin: "0 auto", padding: 20 }}>
       <h1>💬 GPT-4o-mini чат</h1>
       <div
         style={{
@@ -56,9 +56,20 @@ export default function Home() {
         }}
       >
         {messages.map((msg, idx) => (
-          <p key={idx} style={{ color: msg.role === "user" ? "blue" : "green" }}>
-            <b>{msg.role === "user" ? "Вы" : "ИИ"}:</b> {msg.content}
-          </p>
+          <div key={idx} style={{ marginBottom: 12 }}>
+            <p style={{ fontWeight: "bold", color: msg.role === "user" ? "blue" : "green" }}>
+              {msg.role === "user" ? "Вы" : "ИИ"}:
+            </p>
+            <div
+              style={{
+                background: msg.role === "user" ? "#eef6ff" : "#f0fff4",
+                padding: 8,
+                borderRadius: 5,
+              }}
+            >
+              <ReactMarkdown>{msg.content}</ReactMarkdown>
+            </div>
+          </div>
         ))}
         {loading && <p>⌛ ИИ думает...</p>}
       </div>
@@ -68,6 +79,7 @@ export default function Home() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Напишите сообщение..."
+          onKeyDown={(e) => e.key === "Enter" && sendMessage()}
         />
         <button onClick={sendMessage} disabled={loading}>
           Отправить
