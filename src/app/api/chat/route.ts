@@ -1,43 +1,34 @@
-// src/app/api/chat/route.ts
 import OpenAI from "openai";
-import { NextResponse } from "next/server";
+
+export const runtime = "edge";
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY, // ключ в Vercel переменных
+});
 
 export async function POST(req: Request) {
   try {
     const { messages } = await req.json();
 
-    if (!process.env.OPENAI_API_KEY) {
-      return NextResponse.json(
-        { error: "❌ OPENAI_API_KEY не установлен на сервере" },
-        { status: 500 }
-      );
-    }
-
-    if (!messages || !Array.isArray(messages)) {
-      return NextResponse.json(
-        { error: "❌ Неверный формат запроса. Ожидается { messages: [...] }" },
+    if (!messages) {
+      return new Response(
+        JSON.stringify({ error: "❌ Неверный формат запроса. Ожидается { messages: [...] }" }),
         { status: 400 }
       );
     }
 
-    const client = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
-
-    const response = await client.chat.completions.create({
-      model: "gpt-4o-mini", // наша новая модель
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
       messages,
-      temperature: 0.7,
-      max_tokens: 500,
     });
 
-    return NextResponse.json({
-      reply: response.choices[0]?.message?.content || "",
-    });
+    return new Response(
+      JSON.stringify({ content: completion.choices[0].message.content }),
+      { status: 200 }
+    );
   } catch (error: any) {
-    console.error("Ошибка запроса к OpenAI:", error);
-    return NextResponse.json(
-      { error: `Ошибка запроса к OpenAI: ${error.message}` },
+    return new Response(
+      JSON.stringify({ error: error.message || "Ошибка на сервере" }),
       { status: 500 }
     );
   }
