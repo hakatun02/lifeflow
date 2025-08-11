@@ -1,66 +1,47 @@
 // src/app/api/chat/route.ts
+import OpenAI from "openai";
 import { NextResponse } from "next/server";
-
-type OpenAIError = {
-  error?: { message?: string; type?: string; code?: string };
-};
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const message = body?.message;
+    const { messages } = await req.json();
 
-    if (!message || typeof message !== "string") {
-      return NextResponse.json({ error: "Поле 'message' обязательно и должно быть строкой" }, { status: 400 });
+    if (!process.env.OPENAI_API_KEY) {
+      return NextResponse.json(
+        { error: "❌ OPENAI_API_KEY не установлен на сервере" },
+        { status: 500 }
+      );
     }
 
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      console.error("OPENAI_API_KEY is missing on server");
-      return NextResponse.json({ error: "OPENAI_API_KEY не настроен на сервере" }, { status: 500 });
+    if (!messages || !Array.isArray(messages)) {
+      return NextResponse.json(
+        { error: "❌ Неверный формат запроса. Ожидается { messages: [...] }" },
+        { status: 400 }
+      );
     }
 
-    // Запрос прямо к REST API OpenAI (модель gpt-4o-mini)
-    const resp = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: "You are a helpful assistant." },
-          { role: "user", content: message },
-        ],
-        temperature: 0.7,
-        max_tokens: 1000,
-      }),
+    const client = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
     });
 
-    const data = (await resp.json()) as any;
+    const response = await client.chat.completions.create({
+      model: "gpt-4o-mini", // наша новая модель
+      messages,
+      temperature: 0.7,
+      max_tokens: 500,
+    });
 
-    if (!resp.ok) {
-      // Логируем ошибку с кодом и телом, чтобы видеть в Vercel logs
-      console.error("OpenAI responded with error:", resp.status, data);
-      const errMsg = (data as OpenAIError).error?.message ?? JSON.stringify(data);
-      return NextResponse.json({ error: `OpenAI error: ${errMsg}` }, { status: resp.status });
-    }
-
-    // Берём ответ
-    const reply = data?.choices?.[0]?.message?.content ?? null;
-
-    if (!reply) {
-      console.error("OpenAI returned no reply:", data);
-      return NextResponse.json({ error: "OpenAI вернул пустой ответ" }, { status: 500 });
-    }
-
-    return NextResponse.json({ reply });
-  } catch (err: any) {
-    console.error("Ошибка в /api/chat:", err);
-    const message = err?.message ?? String(err);
-    return NextResponse.json({ error: `Server error: ${message}` }, { status: 500 });
+    return NextResponse.json({
+      reply: response.choices[0]?.message?.content || "",
+    });
+  } catch (error: any) {
+    console.error("Ошибка запроса к OpenAI:", error);
+    return NextResponse.json(
+      { error: `Ошибка запроса к OpenAI: ${error.message}` },
+      { status: 500 }
+    );
   }
 }
+
 
 
