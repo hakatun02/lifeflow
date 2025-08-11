@@ -1,18 +1,54 @@
-import Link from "next/link";
+"use client";
 
-export default function HomePage() {
+import { useState } from "react";
+
+export default function Home() {
+  const [input, setInput] = useState("");
+  const [response, setResponse] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const sendMessage = async () => {
+    setLoading(true);
+    setResponse("");
+
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: input }),
+      });
+
+      const data = await res.json();
+
+      if (data.reply) {
+        setResponse(data.reply);
+      } else if (data.error) {
+        setResponse("Ошибка: " + data.error);
+      }
+    } catch (err) {
+      setResponse("Ошибка подключения к серверу");
+    }
+
+    setLoading(false);
+  };
+
   return (
-    <main className="p-8 max-w-xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">Добро пожаловать в LifeFlow!</h1>
-      <p className="mb-4">
-        Здесь вы можете создавать новые записи с помощью ИИ.
-      </p>
-      <Link
-        href="/create"
-        className="inline-block bg-mint text-white px-6 py-3 rounded hover:bg-mint-dark transition"
-      >
-        Создать новую запись
-      </Link>
+    <main style={{ padding: "20px", maxWidth: "600px", margin: "0 auto" }}>
+      <h1>GPT-4o-mini Chat</h1>
+      <textarea
+        style={{ width: "100%", height: "80px", marginBottom: "10px" }}
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+        placeholder="Введите сообщение..."
+      />
+      <br />
+      <button onClick={sendMessage} disabled={loading}>
+        {loading ? "Отправка..." : "Отправить"}
+      </button>
+      <div style={{ marginTop: "20px", whiteSpace: "pre-wrap" }}>
+        <strong>Ответ ИИ:</strong>
+        <p>{response}</p>
+      </div>
     </main>
   );
 }

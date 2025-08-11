@@ -1,5 +1,5 @@
-import OpenAI from "openai";
 import { NextResponse } from "next/server";
+import OpenAI from "openai";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -7,28 +7,27 @@ const openai = new OpenAI({
 
 export async function POST(req: Request) {
   try {
-    const { messages } = await req.json();
+    const { message } = await req.json();
 
-    if (!messages || !Array.isArray(messages)) {
-      return NextResponse.json(
-        { error: "Invalid request: 'messages' must be an array" },
-        { status: 400 }
-      );
+    if (!message) {
+      return NextResponse.json({ error: "No message provided" }, { status: 400 });
     }
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
-      messages,
-      temperature: 0.7,
+      messages: [
+        { role: "system", content: "You are a helpful assistant." },
+        { role: "user", content: message },
+      ],
     });
 
     return NextResponse.json({
-      reply: completion.choices[0]?.message?.content || "",
+      reply: completion.choices[0].message?.content || "",
     });
   } catch (error: any) {
     console.error("Ошибка запроса к OpenAI:", error);
     return NextResponse.json(
-      { error: `Ошибка запроса к OpenAI: ${error.message}` },
+      { error: error.message || "Ошибка при запросе к ИИ" },
       { status: 500 }
     );
   }
