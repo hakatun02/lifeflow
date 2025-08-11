@@ -1,156 +1,65 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-
-interface Message {
-  role: "user" | "assistant";
-  content: string;
-}
+import { useState } from "react";
 
 export default function Home() {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState("");
+  const [message, setMessage] = useState("");
+  const [reply, setReply] = useState("");
   const [loading, setLoading] = useState(false);
-  const chatEndRef = useRef<HTMLDivElement>(null);
 
-  // Загружаем историю из localStorage при первом рендере
-  useEffect(() => {
-    const saved = localStorage.getItem("chatMessages");
-    if (saved) {
-      setMessages(JSON.parse(saved));
-    }
-  }, []);
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!message.trim()) return;
 
-  // Сохраняем историю в localStorage при каждом изменении
-  useEffect(() => {
-    localStorage.setItem("chatMessages", JSON.stringify(messages));
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
-  const sendMessage = async () => {
-    if (!input.trim()) return;
-
-    const userMessage: Message = { role: "user", content: input };
-    setMessages((prev) => [...prev, userMessage]);
-    setInput("");
     setLoading(true);
+    setReply("");
 
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: input }),
+        body: JSON.stringify({ message }),
       });
 
       const data = await res.json();
-
-      const botMessage: Message = {
-        role: "assistant",
-        content: data.reply || `Ошибка: ${data.error || "Неизвестная ошибка"}`,
-      };
-
-      setMessages((prev) => [...prev, botMessage]);
+      if (data.error) {
+        setReply(`Ошибка: ${data.error}`);
+      } else {
+        setReply(data.reply);
+      }
     } catch (err) {
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: "Ошибка подключения к серверу" },
-      ]);
+      console.error(err);
+      setReply("Ошибка запроса");
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
-  };
-
-  const clearChat = () => {
-    setMessages([]);
-    localStorage.removeItem("chatMessages");
-  };
+  }
 
   return (
-    <main style={{ padding: "20px", maxWidth: "600px", margin: "0 auto" }}>
-      <h1>GPT-4o-mini Chat</h1>
-
-      <button
-        style={{
-          marginBottom: "10px",
-          padding: "6px 12px",
-          borderRadius: "8px",
-          background: "#ff4d4f",
-          color: "#fff",
-          border: "none",
-          cursor: "pointer",
-        }}
-        onClick={clearChat}
-      >
-        Очистить чат
-      </button>
-
-      {/* Чат */}
-      <div
-        style={{
-          border: "1px solid #ccc",
-          borderRadius: "8px",
-          padding: "10px",
-          height: "400px",
-          overflowY: "auto",
-          background: "#fafafa",
-        }}
-      >
-        {messages.map((msg, i) => (
-          <div
-            key={i}
-            style={{
-              textAlign: msg.role === "user" ? "right" : "left",
-              marginBottom: "10px",
-            }}
-          >
-            <span
-              style={{
-                display: "inline-block",
-                padding: "8px 12px",
-                borderRadius: "12px",
-                background: msg.role === "user" ? "#0070f3" : "#e5e5ea",
-                color: msg.role === "user" ? "#fff" : "#000",
-                maxWidth: "80%",
-                wordWrap: "break-word",
-              }}
-            >
-              {msg.content}
-            </span>
-          </div>
-        ))}
-        <div ref={chatEndRef} />
-      </div>
-
-      {/* Поле ввода */}
-      <div style={{ display: "flex", marginTop: "10px" }}>
+    <main className="flex flex-col items-center justify-center min-h-screen p-6">
+      <h1 className="text-2xl font-bold mb-6">Чат с GPT-4o-mini</h1>
+      <form onSubmit={handleSubmit} className="flex gap-2 w-full max-w-lg">
         <input
-          style={{
-            flex: 1,
-            padding: "8px",
-            borderRadius: "8px",
-            border: "1px solid #ccc",
-          }}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Введите сообщение..."
-          onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+          type="text"
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          placeholder="Введите сообщение"
+          className="border p-2 rounded flex-grow"
         />
         <button
-          style={{
-            marginLeft: "10px",
-            padding: "8px 16px",
-            borderRadius: "8px",
-            background: "#0070f3",
-            color: "#fff",
-            border: "none",
-            cursor: "pointer",
-          }}
-          onClick={sendMessage}
+          type="submit"
+          className="px-4 py-2 bg-blue-500 text-white rounded"
           disabled={loading}
         >
-          {loading ? "..." : "Отправить"}
+          {loading ? "Отправка..." : "Отправить"}
         </button>
-      </div>
+      </form>
+
+      {reply && (
+        <div className="mt-4 p-4 border rounded w-full max-w-lg bg-gray-100">
+          <strong>Ответ ИИ:</strong> {reply}
+        </div>
+      )}
     </main>
   );
 }
