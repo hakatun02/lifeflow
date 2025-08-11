@@ -1,36 +1,40 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     const { message } = await request.json();
 
-    if (!message) {
-      return NextResponse.json({ error: "Сообщение не передано" }, { status: 400 });
+    if (!message || typeof message !== "string") {
+      return NextResponse.json({ error: "Отсутствует или некорректное сообщение" }, { status: 400 });
     }
+
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json({ error: "Отсутствует OPENAI_API_KEY в окружении" }, { status: 500 });
+    }
+
+    const openai = new OpenAI({
+      apiKey: apiKey,
+    });
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [{ role: "user", content: message }],
     });
 
-    const aiMessage = completion.choices[0].message.content || "Нет ответа от ИИ.";
+    const text = completion.choices?.[0]?.message?.content ?? "Пустой ответ от ИИ";
 
-    return NextResponse.json({ text: aiMessage });
+    return NextResponse.json({ text });
   } catch (error: any) {
     console.error("Ошибка запроса к OpenAI:", error);
-
-    if (error.response?.data?.error?.message) {
-      console.error("Сообщение ошибки от API:", error.response.data.error.message);
-    }
-
-    return NextResponse.json({ error: "Ошибка при запросе к ИИ." }, { status: 500 });
+    return NextResponse.json(
+      { error: "Ошибка при запросе к ИИ: " + (error.message || "Неизвестная ошибка") },
+      { status: 500 }
+    );
   }
 }
+
 
 
 
